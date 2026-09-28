@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+/* ---------- 设计令牌（海报配色，源自流程图取色） ---------- */
+@theme {
+  --font-sans: "Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif;
+
+  --color-stage: #14161f; /* 海报底色 */
+  --color-ink: #e9edf8; /* 主文字 */
+  --color-dim: #a4b0ca; /* 次级文字 */
+  --color-faint: #8d99b6; /* 弱文字 */
+  --color-gold: #ffe648; /* 口号 */
+  --color-hair: rgba(200, 208, 228, 0.2); /* 分隔线 */
+
+  --color-card-top: #2f3750;
+  --color-card-bottom: #272e42;
+  --color-chip: #39415a;
+  --color-chip-g3: #414a65;
+}
+
+/* ---------- 页面外壳（不参与海报导出：只有 stage 里的内容算海报） ---------- */
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #0b0d13;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- 海报画布：三层径向柔光 + 细网格 ---------- */
+.poster-canvas {
+  /* Tailwind Preflight 把 html 行高改成 1.5；原海报用的是浏览器默认 normal，
+     要还原像素级排版就必须改回来（带 leading-* 的元素不受影响）。 */
+  line-height: normal;
+  background:
+    radial-gradient(1150px 580px at 6% -14%, rgba(75, 91, 124, 0.34), transparent 62%),
+    radial-gradient(950px 520px at 96% 112%, rgba(90, 56, 61, 0.3), transparent 64%),
+    radial-gradient(900px 520px at 50% 46%, rgba(62, 90, 75, 0.15), transparent 70%),
+    var(--color-stage);
+}
+
+.poster-canvas::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(0deg, rgba(200, 208, 228, 0.05) 0 1px, transparent 1px 40px),
+    repeating-linear-gradient(90deg, rgba(200, 208, 228, 0.05) 0 1px, transparent 1px 40px);
+  -webkit-mask-image: radial-gradient(125% 105% at 50% 38%, #000 30%, transparent 100%);
+  mask-image: radial-gradient(125% 105% at 50% 38%, #000 30%, transparent 100%);
+}
