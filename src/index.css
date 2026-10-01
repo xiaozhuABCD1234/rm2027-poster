@@ -1,20 +1,75 @@
 @import "tailwindcss";
 
-/* ---------- 设计令牌（海报配色，源自流程图取色） ---------- */
+/* ============================================================
+   RM2027 海报设计语言 —— 唯一出处：两页的观感都从这里的 token 长出来
+   配色 / 面层级 / 圆角 / 字号：改这里，两页一起变
+   ============================================================ */
 @theme {
   --font-sans: "Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif;
 
+  /* ---- 底色与文字：只有三级文字色，其余都用它们 ---- */
   --color-stage: #14161f; /* 海报底色 */
-  --color-ink: #e9edf8; /* 主文字 */
-  --color-dim: #a4b0ca; /* 次级文字 */
-  --color-faint: #8d99b6; /* 弱文字 */
+  --color-ink: #e9edf8; /* 主文字（标题、名字） */
+  --color-dim: #a4b0ca; /* 次级文字（说明、年级标签、单位） */
+  --color-faint: #8d99b6; /* 弱文字（页脚、字段说明） */
   --color-gold: #ffe648; /* 口号 */
-  --color-hair: rgba(200, 208, 228, 0.2); /* 分隔线 */
 
-  --color-card-top: #2f3750;
-  --color-card-bottom: #272e42;
-  --color-chip: #39415a;
-  --color-chip-g3: #414a65;
+  /* ---- 面层级 surface 0→4（由深到浅）：所有块状元素只从这 5 档里挑 ---- */
+  --color-surface-0: #181d2b; /* 行底衬（偶数带） */
+  --color-surface-1: #1b2030; /* 行底衬（奇数带） */
+  --color-surface-2: #20263a; /* 二级块：矩阵行标签、年级标签 */
+  --color-surface-3: #232a3c; /* 一级块：矩阵列头 */
+  --color-surface-4: #2e3649; /* 顶栏：跨列分组标题 */
+  --color-surface-lead: #201d2e; /* 负责人带 */
+  --color-card-top: #2f3750; /* 卡片渐变起 */
+  --color-card-bottom: #272e42; /* 卡片渐变止 */
+  --color-chip: #39415a; /* 胶囊底（大二） */
+  --color-chip-strong: #414a65; /* 胶囊底（大三） */
+
+  /* ---- 描边：只有三档浓度 ---- */
+  --color-hair: rgba(200, 208, 228, 0.2); /* 分隔线 */
+  --color-edge: rgba(210, 218, 236, 0.34); /* 普通块描边（大二胶囊） */
+  --color-edge-strong: rgba(214, 222, 240, 0.62); /* 强调块描边（大三胶囊） */
+  --color-inset: rgba(200, 208, 228, 0.07); /* 方块内描边（矩阵格子） */
+
+  /* ---- 分组配色（源：流程图取色；技术组卡头、车组行标签与格子都用它） ---- */
+  --color-mech: #46546f;
+  --color-embed: #3e5a4b;
+  --color-algo: #5f4046;
+  --color-misc: #4e4363;
+  --color-ctrl: #5fa0b8;
+
+  /* ---- 圆角：只有三档 ---- */
+  --radius-card: 14px; /* 大卡 / 面板 */
+  --radius-block: 8px; /* 所有内部块：胶囊、矩阵格子、表头 */
+  --radius-bar: 2px; /* 3px 竖条 */
+
+  /* ---- 字号层级：两页不出现这之外的尺寸 ---- */
+  --text-display: 54px; /* 页标题 */
+  --text-display--line-height: 1.04;
+  --text-stat: 72px; /* 页眉大数字 */
+  --text-stat--line-height: 1;
+  --text-cardtitle: 28px; /* 卡片头标题 */
+  --text-badge: 26px; /* 标题后的赛季标记 */
+  --text-statunit: 24px; /* 页眉大数字的单位 */
+  --text-label: 19px; /* 子组标题 / 矩阵行标签 / 副标题 */
+  --text-group: 17px; /* 一级分组标题 / 口号 */
+  --text-body: 21px; /* 胶囊里的人名 */
+  --text-cell: 15px; /* 矩阵格子里的人名 */
+  --text-meta: 14.5px; /* 年级标签、编制、统计说明 */
+  --text-colhead: 13px; /* 矩阵列头（车名） */
+}
+
+/* ---------- 海报脊柱：两页的页眉 / 内容带 / 页脚必须落在同样的 y 上 ---------- */
+:root {
+  --band-h: 680px; /* 内容带高度：技术组卡片与车组矩阵同高 */
+  --head-h: 184px; /* 页眉高度 */
+  --gap-band: 30px; /* 页眉 → 内容带的固定间距（两页一致） */
+  --gap-card: 18px; /* 卡片之间的缝 */
+  --gap-cell: 2px; /* 矩阵的细缝 */
+  --band-title: 26px; /* 技术组：子组标题行带 */
+  --band-g3: 100px; /* 技术组：大三行带（容 2 行胶囊） */
+  --band-g2: 154px; /* 技术组：大二行带（容 3 行胶囊） */
 }
 
 /* ---------- 页面外壳（不参与海报导出：只有 stage 里的内容算海报） ---------- */
@@ -55,4 +110,15 @@ body {
     repeating-linear-gradient(90deg, rgba(200, 208, 228, 0.05) 0 1px, transparent 1px 40px);
   -webkit-mask-image: radial-gradient(125% 105% at 50% 38%, #000 30%, transparent 100%);
   mask-image: radial-gradient(125% 105% at 50% 38%, #000 30%, transparent 100%);
+}
+
+/* ---------- 共用构件 ---------- */
+/* 「带配色的标签」统一用 3px 竖条：技术组子组标题、车组矩阵行标签都是它 */
+.accent-bar {
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 3px;
+  width: 3px;
+  border-radius: var(--radius-bar);
 }

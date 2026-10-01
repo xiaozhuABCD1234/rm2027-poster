@@ -12,5 +12,12 @@ export const isPage = (v: string | null): v is Page =>
 export const asset = (file: string) =>
   `${import.meta.env.BASE_URL}assets/${file}`;
 
+/** public/data 下的名单 JSON（可配置数据，运行时读取，改完刷新即可） */
+export const dataPath = (file: string) =>
+  `${import.meta.env.BASE_URL}data/${file}`;
+
+/** 海报内容区宽度（px）：技术组四张卡的宽度之和 + 3 个间隔应等于它 */
+export const CONTENT_W = 1828;
+
 /** 同一个名字在多个组里出现 -> 去重后的名单（保持出现顺序） */
 export const unique = <T>(list: T[]) => [...new Set(list)];

@@ -74,6 +74,91 @@ export function Diag() {
         `footer 底 ${footer ? Math.round(footer.getBoundingClientRect().bottom - sb.top) : "-"} / 舞台高 ${STAGE_H}`,
       );
 
+      // 视觉脊柱：两页的页眉 / 内容区 / 页脚必须落在同样的 y 上
+      const header = stage.querySelector("header");
+      const section = stage.querySelector("main, section");
+      const band = (el: Element | null) =>
+        el
+          ? `${Math.round(el.getBoundingClientRect().top - sb.top)}..${Math.round(el.getBoundingClientRect().bottom - sb.top)}`
+          : "-";
+      lines.push(`脊柱 页眉 ${band(header)} 内容 ${band(section)} 页脚 ${band(footer)}`);
+
+      // 技术组：固定行带装得下胶囊吗（改名单稿把行带撑破时会在这里报出来）
+      const bandOverflow = [...stage.querySelectorAll<HTMLElement>("[data-gradeline]")].map(
+        (el) => {
+          const chips = el.querySelector<HTMLElement>("[data-chips]");
+          if (!chips) return null;
+          const over = Math.round(
+            chips.getBoundingClientRect().height - el.getBoundingClientRect().height,
+          );
+          if (over <= 0) return null;
+          const sub = el.closest<HTMLElement>("[data-sub]")?.dataset.sub ?? "?";
+          return `${sub}·${el.dataset.gradeline} 超出 ${over}px`;
+        },
+      );
+      if (bandOverflow.length) {
+        const over = bandOverflow.filter(Boolean);
+        lines.push(`行带溢出: ${over.length ? over.join(" | ") : "OK 无溢出"}`);
+      }
+
+      // 技术组：每张卡里「大三 / 大二」行第一枚胶囊的 y（跨卡应对齐）
+      const gradeLines = [...stage.querySelectorAll<HTMLElement>("[data-gradeline]")].map(
+        (el) => {
+          const chip = el.querySelector<HTMLElement>("[data-chips] > *");
+          const r = (chip ?? el).getBoundingClientRect();
+          return `${el.dataset.gradeline}@${Math.round(r.top - sb.top)}`;
+        },
+      );
+      if (gradeLines.length) lines.push(`年级行 y: ${gradeLines.join(" ")}`);
+
+      // 技术组：每张卡的胶囊折行结构（行: 每行胶囊数@该行 y）+ 年级行占位
+      const chipLines = [...stage.querySelectorAll<HTMLElement>("[data-card]")].map(
+        (card) => {
+          const top = card.getBoundingClientRect().top;
+          const rows = new Map<number, number>();
+          for (const chip of card.querySelectorAll<HTMLElement>("[data-chip]")) {
+            const y = Math.round(chip.getBoundingClientRect().top - top);
+            rows.set(y, (rows.get(y) ?? 0) + 1);
+          }
+          const name = card.querySelector("span")?.textContent ?? "?";
+          return `${name}:${[...rows.entries()].map(([y, n]) => `${n}@${y}`).join(" ")}`;
+        },
+      );
+      if (chipLines.length) lines.push(`卡内胶囊行(卡顶起): ${chipLines.join(" | ")}`);
+
+      const bands = [...stage.querySelectorAll<HTMLElement>("[data-gradeline]")].map(
+        (el) => {
+          const r = el.getBoundingClientRect();
+          const sub = el.closest<HTMLElement>("[data-sub]")?.dataset.sub ?? "?";
+          return `${sub}·${el.dataset.gradeline} ${Math.round(r.top - sb.top)}..${Math.round(r.bottom - sb.top)}`;
+        },
+      );
+      if (bands.length) lines.push(`年级行占位: ${bands.join(" | ")}`);
+
+      // 技术组：行标签文字中心与首枚胶囊文字中心的 y 差（应为 0，才算「对齐」）
+      const labelDelta = [...stage.querySelectorAll<HTMLElement>("[data-gradeline]")]
+        .slice(0, 4)
+        .map((el) => {
+          const label = el.firstElementChild as HTMLElement | null;
+          const chip = el.querySelector<HTMLElement>("[data-chip]");
+          if (!label || !chip) return null;
+          const a = label.getBoundingClientRect();
+          const b = chip.getBoundingClientRect();
+          return `${el.dataset.gradeline} Δ${(a.top + a.height / 2 - (b.top + b.height / 2)).toFixed(1)}`;
+        })
+        .filter(Boolean);
+      if (labelDelta.length) lines.push(`行标签 vs 胶囊文字中心: ${labelDelta.join(" ")}`);
+
+      // 车组：12 列是否等宽、左右边界是否与内容区对齐
+      const cellCols = [...stage.querySelectorAll<HTMLElement>("[data-col]")];
+      if (cellCols.length) {
+        const w = [...new Set(cellCols.map((c) => Math.round(c.getBoundingClientRect().width)))];
+        const lefts = cellCols.map((c) => Math.round(c.getBoundingClientRect().left - sb.left));
+        lines.push(
+          `列宽去重 ${w.join("/")} 首列左 ${lefts[0]} 末列右 ${Math.round(cellCols[cellCols.length - 1].getBoundingClientRect().right - sb.left)}`,
+        );
+      }
+
       for (const card of stage.querySelectorAll<HTMLElement>("[data-card]")) {
         const cb = card.getBoundingClientRect();
         const body = card.lastElementChild!;

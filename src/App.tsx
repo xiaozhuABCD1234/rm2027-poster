@@ -4,6 +4,7 @@ import { Diag } from "./components/Diag";
 import { StageStack } from "./components/Stage";
 import { TechRoster } from "./components/TechRoster";
 import { useAutoPlay } from "./hooks/useAutoPlay";
+import { useRosterData } from "./hooks/useRosterData";
 import { useScreenWakeLock } from "./hooks/useScreenWakeLock";
 import { useWheelNavigate } from "./hooks/useWheelNavigate";
 import { isPage, PAGES, type Page } from "./lib/util";
@@ -30,9 +31,29 @@ const toggleFullscreen = () => {
   }
 };
 
+/** 名单 JSON 读取失败时的兜底提示（不进舞台，直接铺在页面上） */
+function DataError({ error }: { error: string }) {
+  return (
+    <div className="fixed inset-0 grid place-items-center p-10">
+      <div className="max-w-[900px] rounded-card border border-hair bg-surface-1 p-8">
+        <h1 className="text-badge font-bold tracking-[2px] text-ink">
+          名单数据读取失败
+        </h1>
+        <p className="mt-4 text-group leading-[1.7] text-dim">{error}</p>
+        <p className="mt-4 text-meta leading-[1.7] text-faint">
+          名单在 <code>public/data/tech.json</code> 与{" "}
+          <code>public/data/cars.json</code>；改完保存后刷新本页即可，字段说明见文件里的
+          <code>$comment</code>。
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [page, setPage] = useState<Page>(initialPage);
   const [auto, setAuto] = useState(autoEnabled);
+  const roster = useRosterData();
 
   const go = useCallback((p: Page) => {
     setPage(p);
@@ -97,14 +118,34 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [go, next, prev]);
 
+  // 名单没读出来之前不挂载海报：卡片的折行平衡只算一次，也不会闪空名单
+  if (roster.status === "loading") return diag ? <Diag /> : null;
+  if (roster.status === "error")
+    return (
+      <>
+        <DataError error={roster.error} />
+        {diag && <Diag />}
+      </>
+    );
+
   return (
     <>
       <StageStack
         active={page}
         force1x={force1x}
         layers={[
-          { key: "tech", node: <TechRoster /> },
-          { key: "cars", node: <CarMatrix /> },
+          {
+            key: "tech",
+            node: (
+              <TechRoster data={roster.roster.tech} stats={roster.roster.techStats} />
+            ),
+          },
+          {
+            key: "cars",
+            node: (
+              <CarMatrix data={roster.roster.cars} stats={roster.roster.carStats} />
+            ),
+          },
         ]}
       />
       {diag && <Diag />}

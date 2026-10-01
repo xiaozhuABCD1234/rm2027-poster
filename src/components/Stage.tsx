@@ -53,7 +53,7 @@ export function StageStack({
               data-layer={layer.key}
               aria-hidden={!on}
               inert={!on}
-              className="poster-canvas absolute top-0 left-0 flex flex-col justify-center overflow-hidden px-[46px] pt-[56px] pb-[44px] text-ink"
+              className="poster-canvas absolute top-0 left-0 flex flex-col overflow-hidden px-[46px] pt-[52px] pb-[40px] text-ink"
               style={{
                 width: STAGE_W,
                 height: STAGE_H,

@@ -1,19 +1,15 @@
-import { Fragment } from "react";
-import {
-  CAR_BLOCKS,
-  CAR_LEADS,
-  CAR_STATS,
-  DISCIPLINE_STYLE,
-  ROBOT_COLUMNS,
-  ROBOT_GROUPS,
-} from "../data/cars";
+import { Fragment, type CSSProperties, type ReactNode } from "react";
+import type { CarStats, CarsData } from "../data/roster";
+import { CONTENT_W } from "../lib/util";
 import { PosterFooter } from "./PosterFooter";
 import { PosterHeader } from "./PosterHeader";
 
-/** 列模板：年级(58) + 方向(76) + 12 台机器人，两页内容区同宽 1828px */
-const COLS = "58px 76px repeat(12, minmax(0, 1fr))";
-const ROW_H = 60;
-const ROWS = 9; // 2024级 4 行 + 2025级 4 行 + 负责人 1 行
+/** 矩阵前面两列固定：年级(58px) + 工作(76px)，其余列按车数均分 */
+const LEAD_COLS = "58px 76px";
+const DESIGN_ROWS = 9; // 车组页按 9 行设计：2 个年级 × 4 个工作 + 负责人
+const DESIGN_ROW_H = 62; // 9 行 × 62 + 8 缝 + 顶栏 44 + 列头 58 + 2 缝 = 680 = 内容带高
+const GROUP_BAR_H = 44;
+const COL_HEAD_H = 58;
 
 const SEP = <span className="opacity-40">、</span>;
 
@@ -30,29 +26,51 @@ function Names({ names }: { names: string[] }) {
   );
 }
 
-/** 一个格子：按列号显式定位，span 对应原表合并单元格 */
+/** 结构块（年级 / 工作 / 列头 / 顶栏）：统一圆角，面层级由调用方给 */
+function Block({
+  style,
+  className,
+  col,
+  children,
+}: {
+  style: CSSProperties;
+  className: string;
+  /** 仅供 ?diag=1 量列宽用 */
+  col?: number;
+  children?: ReactNode;
+}) {
+  return (
+    <div
+      className={`flex items-center justify-center rounded-block ${className}`}
+      style={style}
+      data-col={col}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** 一个格子 = 车 × (年级, 工作)；空位不渲染 */
 function Cell({
   col,
-  span = 1,
   row,
   accent,
   names,
 }: {
   col: number;
-  span?: number;
   row: number;
   accent: string;
   names: string[];
 }) {
   return (
     <div
-      className="flex flex-wrap content-center items-center justify-center gap-x-[2px] gap-y-[1px] rounded-[6px] px-[6px] py-[3px] text-[15px] leading-[1.25] tracking-[0.5px] text-[#E6EBF8]"
+      className="flex flex-wrap content-center items-center justify-center gap-x-[2px] gap-y-[1px] rounded-block px-[6px] py-[3px] text-cell leading-[1.25] tracking-[0.5px] text-ink"
       style={{
-        gridColumn: `${col + 3} / span ${span}`,
+        gridColumn: col + 3,
         gridRow: row,
         background: `${accent}1A`,
         borderLeft: `3px solid ${accent}`,
-        boxShadow: "inset 0 0 0 1px rgba(200,208,228,.07)",
+        boxShadow: "inset 0 0 0 1px var(--color-inset)",
       }}
     >
       <Names names={names} />
@@ -60,140 +78,203 @@ function Cell({
   );
 }
 
-export function CarMatrix() {
+export function CarMatrix({ data, stats }: { data: CarsData; stats: CarStats }) {
+  const { grades, disciplines, leadRow, robots } = data;
+  const COLS = `${LEAD_COLS} repeat(${robots.length}, minmax(0, 1fr))`;
+  /** 年级块标签：「2024级」->「2024 级」，与页眉原有排版一致 */
+  const gradeText = (g: string) => g.replace(/\s*级$/, " 级");
+
+  const bodyRows = grades.length * disciplines.length;
+  const totalRows = bodyRows + 1; // + 负责人行
+  const rowH =
+    totalRows <= DESIGN_ROWS
+      ? DESIGN_ROW_H
+      : Math.floor((DESIGN_ROW_H * DESIGN_ROWS) / totalRows);
+
+  // 每行底衬：年级块交替底色（surface-1 / surface-0），负责人行单独一档
+  const BLOCK_TINTS = ["var(--color-surface-1)", "var(--color-surface-0)"];
+  const rowTints = [
+    ...grades.flatMap((_grade, gi) =>
+      disciplines.map(() => BLOCK_TINTS[gi % BLOCK_TINTS.length]),
+    ),
+    "var(--color-surface-lead)",
+  ];
+
+  // 顶部一级分组：相邻且 group 同名的车合成一条跨列标题（JSON 里不用写 span）；
+  // 没有 group 的车合成一条「无分组」的暗条，让顶栏成为连续的一条，不留洞。
+  const groupRuns = robots.reduce<
+    { group?: string; start: number; span: number }[]
+  >((acc, robot, i) => {
+    const last = acc[acc.length - 1];
+    if (last && last.group === robot.group && last.start + last.span === i) {
+      return [...acc.slice(0, -1), { ...last, span: last.span + 1 }];
+    }
+    return [...acc, { group: robot.group, start: i, span: 1 }];
+  }, []);
+
   return (
     <div className="contents">
       <PosterHeader
-        compact
         title="车组人员名单"
         badge="RM2027"
         subtitle={
           <>
             ROBOMASTER 2027 赛季
             <span className="mx-[9px] text-faint">|</span>
-            12 台机器人 · 2024 级 / 2025 级 · 机械 / 硬件 / 电控 / 算法
+            {`${robots.length} 台机器人 · ${grades
+              .map(gradeText)
+              .join(" / ")} · ${disciplines.map((d) => d.name).join(" / ")}`}
           </>
         }
         slogan="飒沓流星"
         stats={{
-          value: String(CAR_STATS.unique),
+          value: String(stats.unique),
           unit: "人",
-          note: `人次 ${CAR_STATS.slots} · 12 台机器人`,
+          note: `人次 ${stats.slots} · ${robots.length} 台机器人`,
         }}
       />
 
-      <section className="relative z-[1] mt-[22px] flex flex-col gap-[2px]">
-        {/* 一级分组：步兵 / 哨兵（原表 C1:G1、H1:I1 合并单元格） */}
+      <section
+        className="relative z-[1] mt-[var(--gap-band)] flex flex-col gap-[var(--gap-cell)]"
+        style={{ width: CONTENT_W }}
+      >
+        {/* 一级分组：步兵 / 哨兵（由各车的 group 自动合并成一格） */}
         <div
-          className="grid gap-x-[2px]"
-          style={{ gridTemplateColumns: COLS, height: 38 }}
+          className="grid gap-x-[var(--gap-cell)]"
+          style={{ gridTemplateColumns: COLS, height: GROUP_BAR_H }}
         >
-          {ROBOT_GROUPS.map((g, gi) => (
-            <div
-              key={g.name}
-              className="flex items-center justify-center rounded-[6px] bg-[#2E3649] text-[17px] font-bold tracking-[6px] text-[#D3DBEE]"
+          {groupRuns.map((g) => (
+            <Block
+              key={`${g.group ?? "nogroup"}-${g.start}`}
               style={{
-                gridColumn: `${(gi === 0 ? 0 : 5) + 3} / span ${g.span}`,
+                gridColumn: `${g.start + 3} / span ${g.span}`,
+                background: g.group
+                  ? "var(--color-surface-4)"
+                  : "var(--color-surface-2)",
               }}
+              className="text-group font-bold tracking-[6px] text-ink"
             >
-              {g.name}
-            </div>
+              {g.group}
+            </Block>
           ))}
         </div>
 
-        {/* 二级表头：12 台机器人 / 技术方向 */}
+        {/* 二级表头：各车名 */}
         <div
-          className="grid gap-x-[2px]"
-          style={{ gridTemplateColumns: COLS, height: 52 }}
+          className="grid gap-x-[var(--gap-cell)]"
+          style={{ gridTemplateColumns: COLS, height: COL_HEAD_H }}
         >
-          {ROBOT_COLUMNS.map((label, i) => (
-            <div
-              key={label}
-              className="flex items-center justify-center rounded-[6px] bg-[#232A3C] px-[4px] text-center text-[13px] font-medium leading-[1.25] tracking-[0.5px] text-[#B9C4DC]"
-              style={{ gridColumn: i + 3 }}
+          {robots.map((robot, i) => (
+            <Block
+              key={robot.name}
+              col={i}
+              style={{
+                gridColumn: i + 3,
+                background: "var(--color-surface-3)",
+              }}
+              className="px-[4px] text-center text-colhead font-medium leading-[1.25] tracking-[0.5px] text-dim"
             >
-              {label}
-            </div>
+              {robot.name}
+            </Block>
           ))}
         </div>
 
-        {/* 正文矩阵 */}
+        {/* 正文矩阵：行 = 年级 × 工作，列 = 车 */}
         <div
-          className="grid gap-[2px]"
+          className="grid gap-[var(--gap-cell)]"
           style={{
             gridTemplateColumns: COLS,
-            gridTemplateRows: `repeat(${ROWS}, ${ROW_H}px)`,
+            gridTemplateRows: `repeat(${totalRows}, ${rowH}px)`,
           }}
         >
           {/* 每行底衬：空白格子多，铺一条淡底让视线能横向跟住一行 */}
-          {Array.from({ length: ROWS }, (_, i) => (
+          {rowTints.map((tint, i) => (
             <div
               key={`row-bg-${i}`}
-              className="rounded-[6px]"
+              className="rounded-block"
               style={{
-                gridColumn: "3 / span 12",
+                gridColumn: `3 / span ${robots.length}`,
                 gridRow: i + 1,
-                background: i < 4 ? "#1B2030" : i < 8 ? "#181D2B" : "#201D2E",
+                background: tint,
               }}
             />
           ))}
 
-          {CAR_BLOCKS.map((block, bi) => (
-            <Fragment key={block.grade}>
-              <div
-                className="flex items-center justify-center rounded-[6px] bg-[#20263A] text-[18px] font-bold tracking-[6px] text-[#C9D4EA] [writing-mode:vertical-rl]"
-                style={{ gridColumn: 1, gridRow: `${bi * 4 + 1} / span 4` }}
-              >
-                {block.grade}
-              </div>
-              {block.rows.map((row, ri) => {
-                const rowIndex = bi * 4 + ri + 1;
-                const accent = DISCIPLINE_STYLE[row.disc].accent;
-                return (
-                  <Fragment key={row.disc}>
-                    <div
-                      className="flex items-center justify-center rounded-[6px] bg-[#20263A] text-[19px] font-bold tracking-[4px]"
-                      style={{
-                        gridColumn: 2,
-                        gridRow: rowIndex,
-                        color: accent,
-                      }}
-                    >
-                      {row.disc}
-                    </div>
-                    {row.cells.map((c) => (
-                      <Cell
-                        key={`${c.col}-${c.span ?? 1}`}
-                        col={c.col}
-                        span={c.span}
-                        row={rowIndex}
-                        accent={accent}
-                        names={c.names}
-                      />
-                    ))}
-                  </Fragment>
-                );
-              })}
-            </Fragment>
-          ))}
+          {grades.map((grade, gi) => {
+            const startRow = gi * disciplines.length + 1;
+            return (
+              <Fragment key={grade}>
+                <Block
+                  style={{
+                    gridColumn: 1,
+                    gridRow: `${startRow} / span ${disciplines.length}`,
+                    background: "var(--color-surface-2)",
+                  }}
+                  className="text-label font-bold tracking-[6px] text-ink [writing-mode:vertical-rl]"
+                >
+                  {grade}
+                </Block>
+                {disciplines.map((disc, di) => {
+                  const rowIndex = startRow + di;
+                  return (
+                    <Fragment key={disc.name}>
+                      {/* 工作标签：与技术组子组标题同一套语言（3px 竖条 + 19px 粗体） */}
+                      <Block
+                        style={{
+                          gridColumn: 2,
+                          gridRow: rowIndex,
+                          background: "var(--color-surface-2)",
+                        }}
+                        className="justify-start pl-[12px]"
+                      >
+                        <b className="relative text-label font-bold tracking-[2px] text-ink">
+                          <span className="accent-bar" style={{ background: disc.accent }} />
+                          {disc.name}
+                        </b>
+                      </Block>
+                      {robots.map((robot, ci) => {
+                        const list = robot.crew[grade]?.[disc.name];
+                        if (!list?.length) return null;
+                        return (
+                          <Cell
+                            key={`${grade}-${disc.name}-${robot.name}`}
+                            col={ci}
+                            row={rowIndex}
+                            accent={disc.accent}
+                            names={list}
+                          />
+                        );
+                      })}
+                    </Fragment>
+                  );
+                })}
+              </Fragment>
+            );
+          })}
 
-          {/* 负责人行：末行，程一夫一格横跨 5 个步兵构型 */}
-          <div
-            className="flex items-center justify-center rounded-[6px] bg-[#221F33] text-[19px] font-bold tracking-[4px] text-[#C4B6DE]"
-            style={{ gridColumn: "1 / span 2", gridRow: ROWS }}
+          {/* 负责人行：末行，每台车各写自己的负责人 */}
+          <Block
+            style={{
+              gridColumn: "1 / span 2",
+              gridRow: totalRows,
+              background: "var(--color-surface-lead)",
+            }}
+            className="text-label font-bold tracking-[4px] text-ink"
           >
-            负责人
-          </div>
-          {CAR_LEADS.cells.map((c) => (
-            <Cell
-              key={`lead-${c.col}`}
-              col={c.col}
-              span={c.span}
-              row={ROWS}
-              accent={DISCIPLINE_STYLE.负责人.accent}
-              names={c.names}
-            />
-          ))}
+            {leadRow.label}
+          </Block>
+          {robots.map((robot, ci) => {
+            if (!robot.lead.length) return null;
+            return (
+              <Cell
+                key={`lead-${robot.name}`}
+                col={ci}
+                row={totalRows}
+                accent={leadRow.accent}
+                names={robot.lead}
+              />
+            );
+          })}
         </div>
       </section>
 
