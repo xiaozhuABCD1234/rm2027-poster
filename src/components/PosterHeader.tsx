@@ -24,7 +24,7 @@ export function PosterHeader({ title, badge, subtitle, slogan, stats }: Props) {
           alt="灵晔战队 logo"
           className="block h-[118px] w-auto"
         />
-        <div className="h-[96px] w-px bg-[linear-gradient(180deg,transparent,var(--color-dim),transparent)]" />
+        <div className="h-[96px] w-px bg-[linear-gradient(180deg,transparent,var(--color-hair-strong),transparent)]" />
         <div>
           <h1 className="text-display font-bold tracking-[4px]">
             {title}

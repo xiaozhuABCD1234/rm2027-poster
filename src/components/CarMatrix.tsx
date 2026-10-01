@@ -1,6 +1,7 @@
-import { Fragment, type CSSProperties, type ReactNode } from "react";
+import { Fragment } from "react";
 import type { CarStats, CarsData } from "../data/roster";
 import { CONTENT_W } from "../lib/util";
+import { AccentLabel, Block, PersonCell } from "./blocks";
 import { PosterFooter } from "./PosterFooter";
 import { PosterHeader } from "./PosterHeader";
 
@@ -10,73 +11,6 @@ const DESIGN_ROWS = 9; // 车组页按 9 行设计：2 个年级 × 4 个工作 
 const DESIGN_ROW_H = 62; // 9 行 × 62 + 8 缝 + 顶栏 44 + 列头 58 + 2 缝 = 680 = 内容带高
 const GROUP_BAR_H = 44;
 const COL_HEAD_H = 58;
-
-const SEP = <span className="opacity-40">、</span>;
-
-function Names({ names }: { names: string[] }) {
-  return (
-    <>
-      {names.map((n, i) => (
-        <Fragment key={n}>
-          {i > 0 && SEP}
-          <span>{n}</span>
-        </Fragment>
-      ))}
-    </>
-  );
-}
-
-/** 结构块（年级 / 工作 / 列头 / 顶栏）：统一圆角，面层级由调用方给 */
-function Block({
-  style,
-  className,
-  col,
-  children,
-}: {
-  style: CSSProperties;
-  className: string;
-  /** 仅供 ?diag=1 量列宽用 */
-  col?: number;
-  children?: ReactNode;
-}) {
-  return (
-    <div
-      className={`flex items-center justify-center rounded-block ${className}`}
-      style={style}
-      data-col={col}
-    >
-      {children}
-    </div>
-  );
-}
-
-/** 一个格子 = 车 × (年级, 工作)；空位不渲染 */
-function Cell({
-  col,
-  row,
-  accent,
-  names,
-}: {
-  col: number;
-  row: number;
-  accent: string;
-  names: string[];
-}) {
-  return (
-    <div
-      className="flex flex-wrap content-center items-center justify-center gap-x-[2px] gap-y-[1px] rounded-block px-[6px] py-[3px] text-cell leading-[1.25] tracking-[0.5px] text-ink"
-      style={{
-        gridColumn: col + 3,
-        gridRow: row,
-        background: `${accent}1A`,
-        borderLeft: `3px solid ${accent}`,
-        boxShadow: "inset 0 0 0 1px var(--color-inset)",
-      }}
-    >
-      <Names names={names} />
-    </div>
-  );
-}
 
 export function CarMatrix({ data, stats }: { data: CarsData; stats: CarStats }) {
   const { grades, disciplines, leadRow, robots } = data;
@@ -113,7 +47,7 @@ export function CarMatrix({ data, stats }: { data: CarsData; stats: CarStats }) 
   }, []);
 
   return (
-    <div className="contents">
+    <>
       <PosterHeader
         title="车组人员名单"
         badge="RM2027"
@@ -225,23 +159,19 @@ export function CarMatrix({ data, stats }: { data: CarsData; stats: CarStats }) 
                           gridRow: rowIndex,
                           background: "var(--color-surface-2)",
                         }}
-                        className="justify-start pl-[12px]"
+                        className="justify-start"
                       >
-                        <b className="relative text-label font-bold tracking-[2px] text-ink">
-                          <span className="accent-bar" style={{ background: disc.accent }} />
-                          {disc.name}
-                        </b>
+                        <AccentLabel accent={disc.accent}>{disc.name}</AccentLabel>
                       </Block>
                       {robots.map((robot, ci) => {
                         const list = robot.crew[grade]?.[disc.name];
                         if (!list?.length) return null;
                         return (
-                          <Cell
+                          <PersonCell
                             key={`${grade}-${disc.name}-${robot.name}`}
-                            col={ci}
-                            row={rowIndex}
-                            accent={disc.accent}
                             names={list}
+                            accent={disc.accent}
+                            style={{ gridColumn: ci + 3, gridRow: rowIndex }}
                           />
                         );
                       })}
@@ -266,12 +196,11 @@ export function CarMatrix({ data, stats }: { data: CarsData; stats: CarStats }) 
           {robots.map((robot, ci) => {
             if (!robot.lead.length) return null;
             return (
-              <Cell
+              <PersonCell
                 key={`lead-${robot.name}`}
-                col={ci}
-                row={totalRows}
-                accent={leadRow.accent}
                 names={robot.lead}
+                accent={leadRow.accent}
+                style={{ gridColumn: ci + 3, gridRow: totalRows }}
               />
             );
           })}
@@ -279,6 +208,6 @@ export function CarMatrix({ data, stats }: { data: CarsData; stats: CarStats }) 
       </section>
 
       <PosterFooter />
-    </div>
+    </>
   );
 }

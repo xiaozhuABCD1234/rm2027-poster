@@ -149,7 +149,34 @@ export function Diag() {
         .filter(Boolean);
       if (labelDelta.length) lines.push(`行标签 vs 胶囊文字中心: ${labelDelta.join(" ")}`);
 
-      // 车组：12 列是否等宽、左右边界是否与内容区对齐
+      // 技术组：胶囊几何 —— 每行的左右间距、行间上下间距、是否有胶囊越过容器右边界
+      const geo = [...stage.querySelectorAll<HTMLElement>("[data-gradeline]")].map((el) => {
+        const box = el.querySelector<HTMLElement>("[data-chips]");
+        if (!box) return null;
+        const bb = box.getBoundingClientRect();
+        const chips = [...box.querySelectorAll<HTMLElement>("[data-chip]")].map((c) =>
+          c.getBoundingClientRect(),
+        );
+        const lines = new Map<number, DOMRect[]>();
+        for (const r of chips) {
+          const y = Math.round(r.top);
+          lines.set(y, [...(lines.get(y) ?? []), r]);
+        }
+        const parts = [...lines.entries()].map(([y, row]) => {
+          const sorted = [...row].sort((a, b) => a.left - b.left);
+          const gaps = sorted
+            .slice(1)
+            .map((r, i) => Math.round(r.left - sorted[i].right));
+          const over = Math.round(
+            Math.max(...sorted.map((r) => r.right)) - bb.right,
+          );
+          return `y${y - Math.round(bb.top)} n${row.length} 间距[${gaps.join(",")}]${over > 0 ? ` 越界+${over}` : ""}`;
+        });
+        const tops = [...lines.keys()].sort((a, b) => a - b);
+        const vgaps = tops.slice(1).map((y, i) => Math.round(y - tops[i]));
+        return `${el.dataset.gradeline}(容器${Math.round(bb.width)}) ${parts.join(" ")} 行距[${vgaps.join(",")}]`;
+      });
+      if (geo.length) lines.push(...geo.filter(Boolean).map((g) => `胶囊几何 ${g}`));
       const cellCols = [...stage.querySelectorAll<HTMLElement>("[data-col]")];
       if (cellCols.length) {
         const w = [...new Set(cellCols.map((c) => Math.round(c.getBoundingClientRect().width)))];

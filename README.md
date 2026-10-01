@@ -102,6 +102,8 @@
 | 页脚 | 957 → 1040 | `mt-auto` 钉在舞台下内边距上，两页自动同 y |
 
 - **技术组行带固定**：`--band-title` 26 / `--band-g3` 100（容 2 行胶囊）/ `--band-g2` 154（容 3 行胶囊），行内顶部对齐 —— 四张卡的「大三」「大二」因此落在同一 y（`?diag=1` 的 `年级行 y` 四组必须一致，`行标签 vs 胶囊文字中心` 的 Δ 应为 0）。
+- **胶囊折行是纯计算 + flex**：`lib/chips.ts` 的 `packChips` 先按估算宽度贪心折行，再按「平均每行个数」重排一次（`3+1 → 2+2`、`5+5+1 → 4+4+3`），渲染成逐行 `flex flex-wrap`。不用测量、不搬 DOM，所以 dev（StrictMode 跑两遍 effect）与构建产物逐行一致；估算偏窄最多让某一行多折一次，不会越出卡片。
+- `?diag=1` 的 `胶囊几何` 逐行给出「行内个数 / 间隔 / 行距 / 是否越界」，间距应全是 8、行距应全是 53（= 胶囊 45 + 间距 8）、没有 `越界`。
 - **卡宽与行带联动**：`tech.json` 的 `width` 是按「大三 ≤ 2 行、大二 ≤ 3 行胶囊」配的，卡太窄会把名单折出行带。加人之后先看 `?diag=1` 的 `行带溢出`（撑破会直接报出哪个子组哪一行超了多少 px）。
 - **车组列宽**：12 列等宽 139px，首列左 184、末列右 1874（= 内容区 1828 的左右边界）；`?diag=1` 的 `列宽去重` 应只有一档。
 - 四张卡里内容少的（机械组只有 1 个子组）**底部会留白**：这是「行对齐」的代价，卡片外框仍然四张齐平。
@@ -157,6 +159,7 @@ src/
     Stage.tsx             固定 1920x1080 舞台 + 多页叠层淡入（StageStack）
     PosterHeader.tsx      页眉：战队 logo + 标题 + 副标题 + 口号 + 右上统计
     PosterFooter.tsx      页脚：上海电力大学校徽 + 校名（两页共用）
+    blocks.tsx            两页共用构件：AccentLabel / Block / Chip / ChipRows / PersonCell
     TechRoster.tsx        技术组名单页（4 张大卡）
     CarMatrix.tsx         车组名单页（矩阵，列/行数由 JSON 决定）
     Diag.tsx              ?diag=1 时的量测叠加层
@@ -164,11 +167,12 @@ src/
     roster.ts             名单的类型 / JSON 校验 / 统计口径（不含具体名单）
   hooks/
     useRosterData.ts      读取 public/data/*.json 并校验，加载完才挂载海报
-    useChipBalance.ts     胶囊折行平衡（避免末行孤儿）
     useAutoPlay.ts        自动播放计时（含页面不可见暂停）
     useWheelNavigate.ts   滚轮 / 触控板手势翻页（阈值 + 冷却，一次手势一页）
     useScreenWakeLock.ts  展示时防止屏幕休眠
-  lib/util.ts             舞台尺寸、页面清单、素材与数据路径
+  lib/
+    util.ts               舞台尺寸、页面清单、素材与数据路径
+    chips.ts              胶囊折行纯计算（packChips：先贪心再排匀，避免末行孤儿）
   index.css               Tailwind 入口 + 设计令牌 + 海报画布
 public/assets/            logo / 校徽等位图素材
 public/data/              名单配置（tech.json / cars.json）—— 改名单只改这里
@@ -220,6 +224,7 @@ python scripts/pixel-diff.py /tmp/base-tech.png /tmp/new-tech.png /tmp/diff.png
 - **名单是运行时 fetch 的**：`file://` 直接打开会被浏览器拦掉 fetch；截图脚本要保证 fetch 已完成（headless Chrome 会等网络静默，实测带不带 `--virtual-time-budget` 都能截到完整海报）。
 - 页面上出现「名单数据读取失败」= JSON 有问题，提示里直接给出文件与字段路径，改完刷新即可。
 - **行带是被卡宽和名单长度共同撑的**：加人后先跑 `?diag=1` 看 `行带溢出`，别等出图才发现被裁。
+- ⚠️ **不要在 effect 里搬 DOM 做排版**：原来的 `useChipBalance` 把末行胶囊打包成一个 `flex:0 0 auto` 的组，`StrictMode` 会把 effect 跑两遍 —— 第二次把上一次生成的组当成「一枚胶囊」再算，组不可拆，胶囊直接越出卡片 62px，而且 **dev 与构建产物排版不一样**。折行一律用 flex + 纯计算（`lib/chips.ts`）。
 - **「大三 / 大二」标签与首枚胶囊的文字中心对齐**靠 `pt-[25px]`：这个值是按胶囊高度（`py-9` + `body` 21px 行高）算出来的，改胶囊内边距/字号时要一起调（`?diag=1` 的 `行标签 vs 胶囊文字中心` 会告诉你差多少）。
 - Chrome 的启动器是异步返回的：脚本里必须 `Start-Process -Wait` + 等文件落盘，否则截图读不到。
 

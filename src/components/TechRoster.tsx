@@ -5,25 +5,31 @@ import {
     type TechStats,
     type TechSub,
 } from "../data/roster";
-import { useChipBalance } from "../hooks/useChipBalance";
+import { AccentLabel, ChipRows } from "./blocks";
 import { PosterFooter } from "./PosterFooter";
 import { PosterHeader } from "./PosterHeader";
 
+/** 卡内可用宽度 = 卡宽 - 卡内边距 36 - 年级标签 42 - 间隙 10 */
+const chipsBoxWidth = (cardWidth: number) => cardWidth - 88;
+
 /**
  * 一行胶囊（大三 / 大二）。
- * 行带高度固定（--band-g3 / --band-g2）+ 顶部对齐：四张卡的「大三」行、大二行
- * 因此落在同样的 y 上，卡与卡之间可以横向看齐。
+ * - 行带高度固定（--band-g3 / --band-g2）+ 顶部对齐：四张卡的「大三」「大二」落在同一 y 上。
+ * - 分行由 packChips 先算好（纯计算），每行内部仍是 flex-wrap：间距一律 8px，
+ *   不会出现越出卡片的胶囊，也不会留下「末行只剩一枚」的孤儿。
  */
 function ChipLine({
     grade,
     names,
-    grade3,
+    strong,
     band,
+    boxWidth,
 }: {
     grade: string;
     names: string[];
-    grade3: boolean;
+    strong: boolean;
     band: string;
+    boxWidth: number;
 }) {
     if (!names.length) return null;
     return (
@@ -35,22 +41,7 @@ function ChipLine({
             <span className="flex-[0_0_42px] pt-[25px] text-meta font-medium tracking-[1.4px] text-dim">
                 {grade}
             </span>
-            <div className="flex min-w-0 flex-wrap content-start gap-[8px]" data-chips>
-                {names.map((n) => (
-                    <span
-                        key={n}
-                        data-chip
-                        className={[
-                            "whitespace-nowrap rounded-block border px-[12px] py-[9px] text-body leading-[1.2] tracking-[1px] text-ink",
-                            grade3
-                                ? "border-edge-strong bg-chip-strong"
-                                : "border-edge bg-chip",
-                        ].join(" ")}
-                    >
-                        {n}
-                    </span>
-                ))}
-            </div>
+            <ChipRows names={names} strong={strong} boxWidth={boxWidth} />
         </div>
     );
 }
@@ -64,10 +55,12 @@ function SubBlock({
     sub,
     group,
     index,
+    boxWidth,
 }: {
     sub: TechSub;
     group: TechGroup;
     index: number;
+    boxWidth: number;
 }) {
     const hideTitle = group.subs.length === 1 && sub.name === group.name;
 
@@ -82,24 +75,34 @@ function SubBlock({
             >
                 {!hideTitle && (
                     <>
-                        <b className="relative pl-[12px] text-label font-bold tracking-[2px] text-ink">
-                            <span className="accent-bar" style={{ background: group.accent }} />
-                            {sub.name}
-                        </b>
+                        <AccentLabel accent={group.accent}>{sub.name}</AccentLabel>
                         <i className="whitespace-nowrap text-meta not-italic tracking-[0.6px] text-dim">
                             大三 {sub.g3.length} · 大二 {sub.g2.length}
                         </i>
                     </>
                 )}
             </div>
-            <ChipLine grade="大三" names={sub.g3} grade3 band="--band-g3" />
-            <ChipLine grade="大二" names={sub.g2} grade3={false} band="--band-g2" />
+            <ChipLine
+                grade="大三"
+                names={sub.g3}
+                strong
+                band="--band-g3"
+                boxWidth={boxWidth}
+            />
+            <ChipLine
+                grade="大二"
+                names={sub.g2}
+                strong={false}
+                band="--band-g2"
+                boxWidth={boxWidth}
+            />
         </div>
     );
 }
 
 function TechCard({ group }: { group: TechGroup }) {
     const { g3, g2 } = countGroup(group);
+    const boxWidth = chipsBoxWidth(group.width);
 
     return (
         <section
@@ -121,7 +124,13 @@ function TechCard({ group }: { group: TechGroup }) {
 
             <div className="flex min-h-0 flex-1 flex-col px-[18px] pt-[18px] pb-[30px]">
                 {group.subs.map((s, i) => (
-                    <SubBlock key={s.name} sub={s} group={group} index={i} />
+                    <SubBlock
+                        key={s.name}
+                        sub={s}
+                        group={group}
+                        index={i}
+                        boxWidth={boxWidth}
+                    />
                 ))}
             </div>
         </section>
@@ -129,10 +138,8 @@ function TechCard({ group }: { group: TechGroup }) {
 }
 
 export function TechRoster({ data, stats }: { data: TechData; stats: TechStats }) {
-    const ref = useChipBalance();
-
     return (
-        <div ref={ref} className="contents">
+        <>
             <PosterHeader
                 title="技术组人员名单"
                 badge="RM2027"
@@ -158,6 +165,6 @@ export function TechRoster({ data, stats }: { data: TechData; stats: TechStats }
             </main>
 
             <PosterFooter />
-        </div>
+        </>
     );
 }
