@@ -33,12 +33,12 @@ export function Countdown() {
   return (
     <aside
       data-countdown
-      aria-label="2027 RMUL 实时倒计时"
+      aria-label="2027 RMUC 实时倒计时"
       aria-live="off"
       className="pointer-events-none absolute left-[1120px] top-[82px] z-[2] w-[620px] text-ink"
     >
       <div className="text-label font-bold tracking-[1px] text-dim">
-        2027 RMUL 倒计时
+        2027 RMUC 倒计时
       </div>
       <div className="mt-[5px] flex items-baseline gap-[10px] whitespace-nowrap">
         <span
