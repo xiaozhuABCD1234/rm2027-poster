@@ -5,6 +5,7 @@ import {
     type TechStats,
     type TechSub,
 } from "../data/roster";
+import { packChips } from "../lib/chips";
 import { AccentLabel, ChipRows } from "./blocks";
 import { Countdown } from "./Countdown";
 import { PosterFooter } from "./PosterFooter";
@@ -15,7 +16,7 @@ const chipsBoxWidth = (cardWidth: number) => cardWidth - 88;
 
 /**
  * 一行胶囊（大三 / 大二）。
- * - 行带高度固定（--band-g3 / --band-g2）+ 顶部对齐：四张卡的「大三」「大二」落在同一 y 上。
+ * - 年级标签与名片使用同一组偏移；大三名片折为多行时，增加行高避免挤到大二。
  * - 分行由 packChips 先算好（纯计算），每行内部仍是 flex-wrap：间距一律 8px，
  *   不会出现越出卡片的胶囊，也不会留下「末行只剩一枚」的孤儿。
  */
@@ -26,6 +27,7 @@ function ChipLine({
     band,
     boxWidth,
     chipClassName = "",
+    extraHeight = 0,
 }: {
     grade: string;
     names: string[];
@@ -33,12 +35,13 @@ function ChipLine({
     band: string;
     boxWidth: number;
     chipClassName?: string;
+    extraHeight?: number;
 }) {
     if (!names.length) return null;
     return (
         <div
             className="flex items-start gap-[10px]"
-            style={{ height: `var(${band})` }}
+            style={{ height: extraHeight ? `calc(var(${band}) + ${extraHeight}px)` : `var(${band})` }}
             data-gradeline={grade}
         >
             <span className="flex-[0_0_42px] pt-[25px] text-meta font-medium tracking-[1.4px] text-dim">
@@ -71,17 +74,7 @@ function SubBlock({
     boxWidth: number;
 }) {
     const hideTitle = group.subs.length === 1 && sub.name === group.name;
-    const shiftG3Only = group.name === "嵌入式组" || group.name === "算法组";
-    const g3ChipClassName = shiftG3Only
-        ? "translate-y-[12px]"
-        : group.name === "综合组"
-          ? sub.name === "管理" ? "translate-y-[32px]" : "translate-y-[16px]"
-          : "translate-y-[6px]";
-    const g2ChipClassName = shiftG3Only
-        ? ""
-        : group.name === "综合组"
-          ? "translate-y-[56px]"
-          : "translate-y-[46px]";
+    const g3ExtraHeight = packChips(sub.g3, boxWidth).length > 1 ? 30 : 0;
     const subgroupGap = group.name === "嵌入式组" ? "mt-[4px]" : "mt-[16px]";
 
     return (
@@ -106,7 +99,8 @@ function SubBlock({
                 grade="大三"
                 names={sub.g3}
                 strong
-                chipClassName={g3ChipClassName}
+                chipClassName="translate-y-[12px]"
+                extraHeight={g3ExtraHeight}
                 band="--band-g3"
                 boxWidth={boxWidth}
             />
@@ -114,7 +108,7 @@ function SubBlock({
                 grade="大二"
                 names={sub.g2}
                 strong={false}
-                chipClassName={g2ChipClassName}
+                chipClassName="translate-y-[12px]"
                 band="--band-g2"
                 boxWidth={boxWidth}
             />
