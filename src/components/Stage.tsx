@@ -9,7 +9,7 @@ export interface StageLayer {
 /**
  * 固定 1920x1080 海报舞台，可叠多页做 PPT 式自动播放。
  *
- * - 窗口够大时 1:1，不够时整体等比缩小（不改内部布局）；`force1x` 强制 1:1，供截图/导出。
+ * - 舞台随视口等比缩放（不改内部布局）；`force1x` 强制 1:1，供截图/导出。
  * - 所有页都保持挂载（只切 opacity + inert），这样换页前排版已算好，淡入不会跳版。
  * - 淡入用「新页盖着旧页淡入」：新页 z 更高、立刻开始淡入；旧页延迟一个淡入时长再熄灭，
  *   所以过渡期间屏幕不会变暗（不像两边同时半透明那样会透出底色）。
@@ -31,11 +31,17 @@ export function StageStack({
     if (force1x) return;
     const fit = () =>
       setScale(
-        Math.min(window.innerWidth / STAGE_W, window.innerHeight / STAGE_H, 1),
+        Math.min(window.innerWidth / STAGE_W, window.innerHeight / STAGE_H),
       );
     fit();
     window.addEventListener("resize", fit);
-    return () => window.removeEventListener("resize", fit);
+    window.visualViewport?.addEventListener("resize", fit);
+    document.addEventListener("fullscreenchange", fit);
+    return () => {
+      window.removeEventListener("resize", fit);
+      window.visualViewport?.removeEventListener("resize", fit);
+      document.removeEventListener("fullscreenchange", fit);
+    };
   }, [force1x]);
 
   return (

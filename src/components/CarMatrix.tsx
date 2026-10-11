@@ -2,6 +2,7 @@ import { Fragment } from "react";
 import type { CarStats, CarsData } from "../data/roster";
 import { CONTENT_W } from "../lib/util";
 import { AccentLabel, Block, PersonCell } from "./blocks";
+import { Countdown } from "./Countdown";
 import { PosterFooter } from "./PosterFooter";
 import { PosterHeader } from "./PosterHeader";
 
@@ -67,6 +68,7 @@ export function CarMatrix({ data, stats }: { data: CarsData; stats: CarStats }) 
           note: `人次 ${stats.slots} · ${robots.length} 台机器人`,
         }}
       />
+      <Countdown />
 
       <section
         className="relative z-[1] mt-[var(--gap-band)] flex flex-col gap-[var(--gap-cell)]"

@@ -6,6 +6,7 @@ import {
     type TechSub,
 } from "../data/roster";
 import { AccentLabel, ChipRows } from "./blocks";
+import { Countdown } from "./Countdown";
 import { PosterFooter } from "./PosterFooter";
 import { PosterHeader } from "./PosterHeader";
 
@@ -157,6 +158,7 @@ export function TechRoster({ data, stats }: { data: TechData; stats: TechStats }
                     note: `大三 ${stats.g3} · 大二 ${stats.g2}（去重）`,
                 }}
             />
+            <Countdown />
 
             <main className="relative z-[1] mt-[var(--gap-band)] flex h-[var(--band-h)] items-stretch gap-[var(--gap-card)]">
                 {data.groups.map((g) => (
