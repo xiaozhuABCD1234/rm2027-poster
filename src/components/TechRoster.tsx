@@ -72,6 +72,16 @@ function SubBlock({
 }) {
     const hideTitle = group.subs.length === 1 && sub.name === group.name;
     const shiftG3Only = group.name === "嵌入式组" || group.name === "算法组";
+    const g3ChipClassName = shiftG3Only
+        ? "translate-y-[12px]"
+        : group.name === "综合组"
+          ? sub.name === "管理" ? "translate-y-[32px]" : "translate-y-[16px]"
+          : "translate-y-[6px]";
+    const g2ChipClassName = shiftG3Only
+        ? ""
+        : group.name === "综合组"
+          ? "translate-y-[56px]"
+          : "translate-y-[46px]";
     const subgroupGap = group.name === "嵌入式组" ? "mt-[4px]" : "mt-[16px]";
 
     return (
@@ -96,7 +106,7 @@ function SubBlock({
                 grade="大三"
                 names={sub.g3}
                 strong
-                chipClassName={shiftG3Only ? "translate-y-[12px]" : "translate-y-[6px]"}
+                chipClassName={g3ChipClassName}
                 band="--band-g3"
                 boxWidth={boxWidth}
             />
@@ -104,7 +114,7 @@ function SubBlock({
                 grade="大二"
                 names={sub.g2}
                 strong={false}
-                chipClassName={shiftG3Only ? "" : "translate-y-[18px]"}
+                chipClassName={g2ChipClassName}
                 band="--band-g2"
                 boxWidth={boxWidth}
             />
@@ -134,11 +144,7 @@ function TechCard({ group }: { group: TechGroup }) {
                 </span>
             </header>
 
-            <div
-                className={`flex min-h-0 flex-1 flex-col px-[18px] pt-[18px] pb-[30px] ${
-                    group.name === "综合组" ? "justify-around" : ""
-                }`}
-            >
+            <div className="flex min-h-0 flex-1 flex-col px-[18px] pt-[18px] pb-[30px]">
                 {group.subs.map((s, i) => (
                     <SubBlock
                         key={s.name}
