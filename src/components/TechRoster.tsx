@@ -72,10 +72,11 @@ function SubBlock({
 }) {
     const hideTitle = group.subs.length === 1 && sub.name === group.name;
     const shiftG3Only = group.name === "嵌入式组" || group.name === "算法组";
+    const subgroupGap = group.name === "嵌入式组" ? "mt-[4px]" : "mt-[16px]";
 
     return (
         <div
-            className={index > 0 ? "mt-[16px] border-t border-dashed border-hair pt-[16px]" : ""}
+            className={index > 0 ? `${subgroupGap} border-t border-dashed border-hair pt-[16px]` : ""}
             data-sub={sub.name}
         >
             <div
@@ -103,7 +104,7 @@ function SubBlock({
                 grade="大二"
                 names={sub.g2}
                 strong={false}
-                chipClassName={shiftG3Only ? "" : "translate-y-[6px]"}
+                chipClassName={shiftG3Only ? "" : "translate-y-[18px]"}
                 band="--band-g2"
                 boxWidth={boxWidth}
             />
