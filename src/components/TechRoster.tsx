@@ -25,12 +25,14 @@ function ChipLine({
     strong,
     band,
     boxWidth,
+    chipClassName = "",
 }: {
     grade: string;
     names: string[];
     strong: boolean;
     band: string;
     boxWidth: number;
+    chipClassName?: string;
 }) {
     if (!names.length) return null;
     return (
@@ -42,7 +44,12 @@ function ChipLine({
             <span className="flex-[0_0_42px] pt-[25px] text-meta font-medium tracking-[1.4px] text-dim">
                 {grade}
             </span>
-            <ChipRows names={names} strong={strong} boxWidth={boxWidth} />
+            <ChipRows
+                names={names}
+                strong={strong}
+                boxWidth={boxWidth}
+                className={chipClassName}
+            />
         </div>
     );
 }
@@ -64,6 +71,7 @@ function SubBlock({
     boxWidth: number;
 }) {
     const hideTitle = group.subs.length === 1 && sub.name === group.name;
+    const shiftG3Only = group.name === "嵌入式组" || group.name === "算法组";
 
     return (
         <div
@@ -87,6 +95,7 @@ function SubBlock({
                 grade="大三"
                 names={sub.g3}
                 strong
+                chipClassName={shiftG3Only ? "translate-y-[12px]" : "translate-y-[6px]"}
                 band="--band-g3"
                 boxWidth={boxWidth}
             />
@@ -94,6 +103,7 @@ function SubBlock({
                 grade="大二"
                 names={sub.g2}
                 strong={false}
+                chipClassName={shiftG3Only ? "" : "translate-y-[6px]"}
                 band="--band-g2"
                 boxWidth={boxWidth}
             />
