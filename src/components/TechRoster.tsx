@@ -134,7 +134,11 @@ function TechCard({ group }: { group: TechGroup }) {
                 </span>
             </header>
 
-            <div className="flex min-h-0 flex-1 flex-col px-[18px] pt-[18px] pb-[30px]">
+            <div
+                className={`flex min-h-0 flex-1 flex-col px-[18px] pt-[18px] pb-[30px] ${
+                    group.name === "综合组" ? "justify-around" : ""
+                }`}
+            >
                 {group.subs.map((s, i) => (
                     <SubBlock
                         key={s.name}
