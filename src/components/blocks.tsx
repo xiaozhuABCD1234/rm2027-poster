@@ -71,14 +71,16 @@ export function ChipRows({
   names,
   strong,
   boxWidth,
+  className = "",
 }: {
   names: string[];
   strong: boolean;
   /** 可用宽度 = 卡宽 - 卡内边距 36 - 年级标签 42 - 间隙 10 */
   boxWidth: number;
+  className?: string;
 }) {
   return (
-    <div className="flex min-w-0 flex-1 flex-col gap-[8px]" data-chips>
+    <div className={`flex min-w-0 flex-1 flex-col gap-[8px] ${className}`} data-chips>
       {packChips(names, boxWidth).map((line) => (
         <div key={line.join("|")} className="flex flex-wrap gap-[8px]">
           {line.map((n) => (

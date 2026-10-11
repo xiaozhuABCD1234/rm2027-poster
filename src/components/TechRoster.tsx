@@ -5,7 +5,9 @@ import {
     type TechStats,
     type TechSub,
 } from "../data/roster";
+import { packChips } from "../lib/chips";
 import { AccentLabel, ChipRows } from "./blocks";
+import { Countdown } from "./Countdown";
 import { PosterFooter } from "./PosterFooter";
 import { PosterHeader } from "./PosterHeader";
 
@@ -14,7 +16,7 @@ const chipsBoxWidth = (cardWidth: number) => cardWidth - 88;
 
 /**
  * 一行胶囊（大三 / 大二）。
- * - 行带高度固定（--band-g3 / --band-g2）+ 顶部对齐：四张卡的「大三」「大二」落在同一 y 上。
+ * - 年级标签与名片使用同一组偏移；大三名片折为多行时，增加行高避免挤到大二。
  * - 分行由 packChips 先算好（纯计算），每行内部仍是 flex-wrap：间距一律 8px，
  *   不会出现越出卡片的胶囊，也不会留下「末行只剩一枚」的孤儿。
  */
@@ -24,24 +26,33 @@ function ChipLine({
     strong,
     band,
     boxWidth,
+    chipClassName = "",
+    extraHeight = 0,
 }: {
     grade: string;
     names: string[];
     strong: boolean;
     band: string;
     boxWidth: number;
+    chipClassName?: string;
+    extraHeight?: number;
 }) {
     if (!names.length) return null;
     return (
         <div
             className="flex items-start gap-[10px]"
-            style={{ height: `var(${band})` }}
+            style={{ height: extraHeight ? `calc(var(${band}) + ${extraHeight}px)` : `var(${band})` }}
             data-gradeline={grade}
         >
             <span className="flex-[0_0_42px] pt-[25px] text-meta font-medium tracking-[1.4px] text-dim">
                 {grade}
             </span>
-            <ChipRows names={names} strong={strong} boxWidth={boxWidth} />
+            <ChipRows
+                names={names}
+                strong={strong}
+                boxWidth={boxWidth}
+                className={chipClassName}
+            />
         </div>
     );
 }
@@ -63,10 +74,12 @@ function SubBlock({
     boxWidth: number;
 }) {
     const hideTitle = group.subs.length === 1 && sub.name === group.name;
+    const g3ExtraHeight = packChips(sub.g3, boxWidth).length > 1 ? 30 : 0;
+    const subgroupGap = group.name === "嵌入式组" ? "mt-[4px]" : "mt-[16px]";
 
     return (
         <div
-            className={index > 0 ? "mt-[16px] border-t border-dashed border-hair pt-[16px]" : ""}
+            className={index > 0 ? `${subgroupGap} border-t border-dashed border-hair pt-[16px]` : ""}
             data-sub={sub.name}
         >
             <div
@@ -86,6 +99,8 @@ function SubBlock({
                 grade="大三"
                 names={sub.g3}
                 strong
+                chipClassName="translate-y-[12px]"
+                extraHeight={g3ExtraHeight}
                 band="--band-g3"
                 boxWidth={boxWidth}
             />
@@ -93,6 +108,7 @@ function SubBlock({
                 grade="大二"
                 names={sub.g2}
                 strong={false}
+                chipClassName="translate-y-[12px]"
                 band="--band-g2"
                 boxWidth={boxWidth}
             />
@@ -157,6 +173,7 @@ export function TechRoster({ data, stats }: { data: TechData; stats: TechStats }
                     note: `大三 ${stats.g3} · 大二 ${stats.g2}（去重）`,
                 }}
             />
+            <Countdown />
 
             <main className="relative z-[1] mt-[var(--gap-band)] flex h-[var(--band-h)] items-stretch gap-[var(--gap-card)]">
                 {data.groups.map((g) => (
