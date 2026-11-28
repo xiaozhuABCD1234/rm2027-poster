@@ -1,6 +1,7 @@
 import { Fragment } from "react";
 import type { CarStats, CarsData } from "../data/roster";
 import { CONTENT_W } from "../lib/util";
+import { carCellRuns, carWorkRuns } from "../lib/car-cells";
 import { AccentLabel, Block, PersonCell } from "./blocks";
 import { Countdown } from "./Countdown";
 import { PosterFooter } from "./PosterFooter";
@@ -35,16 +36,15 @@ export function CarMatrix({ data, stats }: { data: CarsData; stats: CarStats }) 
     "var(--color-surface-lead)",
   ];
 
-  // 顶部一级分组：相邻且 group 同名的车合成一条跨列标题（JSON 里不用写 span）；
-  // 没有 group 的车合成一条「无分组」的暗条，让顶栏成为连续的一条，不留洞。
+  // 有构型的车合并分类标题；独立项目直接以车名作为一级标题。
   const groupRuns = robots.reduce<
-    { group?: string; start: number; span: number }[]
+    { label: string; start: number; span: number; hasVariants: boolean }[]
   >((acc, robot, i) => {
     const last = acc[acc.length - 1];
-    if (last && last.group === robot.group && last.start + last.span === i) {
+    if (robot.group && last?.hasVariants && last.label === robot.group && last.start + last.span === i) {
       return [...acc.slice(0, -1), { ...last, span: last.span + 1 }];
     }
-    return [...acc, { group: robot.group, start: i, span: 1 }];
+    return [...acc, { label: robot.group ?? robot.name, start: i, span: 1, hasVariants: Boolean(robot.group) }];
   }, []);
 
   return (
@@ -56,17 +56,16 @@ export function CarMatrix({ data, stats }: { data: CarsData; stats: CarStats }) 
           <>
             ROBOMASTER 2027 赛季
             <span className="mx-[9px] text-faint">|</span>
-            {`${robots.length} 台机器人 · ${grades
+            {`${robots.length} 个车组 · ${grades
               .map(gradeText)
               .join(" / ")} · ${disciplines.map((d) => d.name).join(" / ")}`}
           </>
         }
         slogan="飒沓流星"
         stats={{
-          // 暂按两页统一的展示人数显示，车组名单统计仍保留在 stats 中。
-          value: "52",
+          value: String(stats.unique),
           unit: "人",
-          note: `人次 ${stats.slots} · ${robots.length} 台机器人`,
+          note: `人次 ${stats.slots} · ${robots.length} 个车组`,
         }}
       />
       <Countdown />
@@ -75,45 +74,40 @@ export function CarMatrix({ data, stats }: { data: CarsData; stats: CarStats }) 
         className="relative z-[1] mt-[var(--gap-band)] flex flex-col gap-[var(--gap-cell)]"
         style={{ width: CONTENT_W }}
       >
-        {/* 一级分组：步兵 / 哨兵（由各车的 group 自动合并成一格） */}
+        {/* 分类与独立项目同级；只有步兵、哨兵在第二行列出构型。 */}
         <div
-          className="grid gap-x-[var(--gap-cell)]"
-          style={{ gridTemplateColumns: COLS, height: GROUP_BAR_H }}
+          className="grid gap-[var(--gap-cell)]"
+          style={{ gridTemplateColumns: COLS, gridTemplateRows: `${GROUP_BAR_H}px ${COL_HEAD_H}px` }}
         >
           {groupRuns.map((g) => (
             <Block
-              key={`${g.group ?? "nogroup"}-${g.start}`}
+              key={`${g.label}-${g.start}`}
+              col={g.hasVariants ? undefined : g.start}
               style={{
                 gridColumn: `${g.start + 3} / span ${g.span}`,
-                background: g.group
-                  ? "var(--color-surface-4)"
-                  : "var(--color-surface-2)",
+                gridRow: g.hasVariants ? "1" : "1 / span 2",
+                alignItems: "flex-start",
+                background: "var(--color-surface-4)",
               }}
-              className="text-group font-bold tracking-[6px] text-ink"
+              className="text-group font-bold tracking-[3px] text-ink"
             >
-              {g.group}
+              <span data-car-category className="flex w-full items-center justify-center" style={{ height: GROUP_BAR_H }}>{g.label}</span>
             </Block>
           ))}
-        </div>
-
-        {/* 二级表头：各车名 */}
-        <div
-          className="grid gap-x-[var(--gap-cell)]"
-          style={{ gridTemplateColumns: COLS, height: COL_HEAD_H }}
-        >
-          {robots.map((robot, i) => (
+          {robots.map((robot, i) => robot.group ? (
             <Block
               key={robot.name}
               col={i}
               style={{
                 gridColumn: i + 3,
+                gridRow: 2,
                 background: "var(--color-surface-3)",
               }}
               className="px-[4px] text-center text-colhead font-medium leading-[1.25] tracking-[0.5px] text-dim"
             >
-              {robot.name}
+              <span data-car-variant>{robot.name}</span>
             </Block>
-          ))}
+          ) : null)}
         </div>
 
         {/* 正文矩阵：行 = 年级 × 工作，列 = 车 */}
@@ -166,18 +160,27 @@ export function CarMatrix({ data, stats }: { data: CarsData; stats: CarStats }) 
                       >
                         <AccentLabel accent={disc.accent}>{disc.name}</AccentLabel>
                       </Block>
-                      {robots.map((robot, ci) => {
-                        const list = robot.crew[grade]?.[disc.name];
-                        if (!list?.length) return null;
-                        return (
-                          <PersonCell
-                            key={`${grade}-${disc.name}-${robot.name}`}
-                            names={list}
+                      {carWorkRuns(robots, grade, disc.name).map(run => run.rowSpan > 1 ? (
+                        <div
+                          key={`${grade}-${disc.name}-${run.start}`}
+                          data-cell
+                          data-joint-work={run.work}
+                          data-names={run.names.join("、")}
+                          className="car-joint-cell"
+                          style={{ gridColumn: `${run.start + 3} / span ${run.span}`, gridRow: `${rowIndex} / span ${run.rowSpan}` }}
+                        >
+                          <div className="car-joint-names" style={{ gridTemplateColumns: run.span > 1 ? "repeat(2, minmax(0, 1fr))" : "minmax(0, 1fr)" }}>
+                            {run.names.map(name => <span key={name}>{name}</span>)}
+                          </div>
+                        </div>
+                      ) : (
+                        <PersonCell
+                            key={`${grade}-${disc.name}-${run.start}`}
+                            names={run.names}
                             accent={disc.accent}
-                            style={{ gridColumn: ci + 3, gridRow: rowIndex }}
+                            style={{ gridColumn: `${run.start + 3} / span ${run.span}`, gridRow: rowIndex }}
                           />
-                        );
-                      })}
+                      ))}
                     </Fragment>
                   );
                 })}
@@ -185,7 +188,7 @@ export function CarMatrix({ data, stats }: { data: CarsData; stats: CarStats }) 
             );
           })}
 
-          {/* 负责人行：末行，每台车各写自己的负责人 */}
+          {/* 相邻项目负责人相同时，合并显示一次。 */}
           <Block
             style={{
               gridColumn: "1 / span 2",
@@ -196,17 +199,14 @@ export function CarMatrix({ data, stats }: { data: CarsData; stats: CarStats }) 
           >
             {leadRow.label}
           </Block>
-          {robots.map((robot, ci) => {
-            if (!robot.lead.length) return null;
-            return (
+          {carCellRuns(robots, robot => robot.lead).map(run => (
               <PersonCell
-                key={`lead-${robot.name}`}
-                names={robot.lead}
+                key={`lead-${run.start}`}
+                names={run.names}
                 accent={leadRow.accent}
-                style={{ gridColumn: ci + 3, gridRow: totalRows }}
+                style={{ gridColumn: `${run.start + 3} / span ${run.span}`, gridRow: totalRows }}
               />
-            );
-          })}
+          ))}
         </div>
       </section>
 

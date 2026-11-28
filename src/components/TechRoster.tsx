@@ -1,153 +1,60 @@
-import {
-    countGroup,
-    type TechData,
-    type TechGroup,
-    type TechStats,
-    type TechSub,
-} from "../data/roster";
-import { packChips } from "../lib/chips";
-import { AccentLabel, ChipRows } from "./blocks";
+import { countGroup, type TechData, type TechGroup, type TechStats, type TechSub } from "../data/roster";
+import { AccentLabel } from "./blocks";
 import { Countdown } from "./Countdown";
 import { PosterFooter } from "./PosterFooter";
 import { PosterHeader } from "./PosterHeader";
 
-/** 卡内可用宽度 = 卡宽 - 卡内边距 36 - 年级标签 42 - 间隙 10 */
-const chipsBoxWidth = (cardWidth: number) => cardWidth - 88;
+const areas = ["mechanical", "embedded", "algorithm", "support"];
 
-/**
- * 一行胶囊（大三 / 大二）。
- * - 年级标签与名片使用同一组偏移；大三名片折为多行时，增加行高避免挤到大二。
- * - 分行由 packChips 先算好（纯计算），每行内部仍是 flex-wrap：间距一律 8px，
- *   不会出现越出卡片的胶囊，也不会留下「末行只剩一枚」的孤儿。
- */
-function ChipLine({
-    grade,
-    names,
-    strong,
-    band,
-    boxWidth,
-    chipClassName = "",
-    extraHeight = 0,
-}: {
-    grade: string;
-    names: string[];
-    strong: boolean;
-    band: string;
-    boxWidth: number;
-    chipClassName?: string;
-    extraHeight?: number;
-}) {
+function GradeRow({ grade, names, columns }: { grade: string; names: string[]; columns: number }) {
     if (!names.length) return null;
     return (
-        <div
-            className="flex items-start gap-[10px]"
-            style={{ height: extraHeight ? `calc(var(${band}) + ${extraHeight}px)` : `var(${band})` }}
-            data-gradeline={grade}
-        >
-            <span className="flex-[0_0_42px] pt-[25px] text-meta font-medium tracking-[1.4px] text-dim">
-                {grade}
-            </span>
-            <ChipRows
-                names={names}
-                strong={strong}
-                boxWidth={boxWidth}
-                className={chipClassName}
-            />
+        <div className="tech-grade" data-gradeline={grade}>
+            <span className="tech-grade-label">{grade}</span>
+            <div className="tech-name-grid" data-chips style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
+                {names.map(name => <span className="tech-name" data-chip key={name}>{name}</span>)}
+            </div>
         </div>
     );
 }
 
-/**
- * 一个子组。
- * 标题行带恒定（--band-title），即使这个卡只有一个同名子组（不显示标题）也占位，
- * 这样「机械组」的胶囊行与其他卡的胶囊行仍然对齐。
- */
-function SubBlock({
-    sub,
-    group,
-    index,
-    boxWidth,
-}: {
+function SubBlock({ sub, group, compact, embedded }: {
     sub: TechSub;
     group: TechGroup;
-    index: number;
-    boxWidth: number;
+    compact: boolean;
+    embedded: boolean;
 }) {
-    const hideTitle = group.subs.length === 1 && sub.name === group.name;
-    const g3ExtraHeight = packChips(sub.g3, boxWidth).length > 1 ? 30 : 0;
-    const subgroupGap = group.name === "嵌入式组" ? "mt-[4px]" : "mt-[16px]";
-
+    const single = group.subs.length === 1 && sub.name === group.name;
     return (
-        <div
-            className={index > 0 ? `${subgroupGap} border-t border-dashed border-hair pt-[16px]` : ""}
-            data-sub={sub.name}
-        >
-            <div
-                className="flex items-baseline justify-between gap-[10px]"
-                style={{ height: "var(--band-title)" }}
-            >
-                {!hideTitle && (
-                    <>
-                        <AccentLabel accent={group.accent}>{sub.name}</AccentLabel>
-                        <i className="whitespace-nowrap text-meta not-italic tracking-[0.6px] text-dim">
-                            大三 {sub.g3.length} · 大二 {sub.g2.length}
-                        </i>
-                    </>
-                )}
+        <div className="tech-sub" data-sub={sub.name}>
+            <div className="tech-sub-title" aria-hidden={single || undefined}>
+                {!single && <>
+                    <AccentLabel accent={group.accent}>{sub.name}</AccentLabel>
+                    <span className="tech-sub-count">{sub.g3.length + sub.g2.length} 人</span>
+                </>}
             </div>
-            <ChipLine
-                grade="大三"
-                names={sub.g3}
-                strong
-                chipClassName="translate-y-[12px]"
-                extraHeight={g3ExtraHeight}
-                band="--band-g3"
-                boxWidth={boxWidth}
-            />
-            <ChipLine
-                grade="大二"
-                names={sub.g2}
-                strong={false}
-                chipClassName="translate-y-[12px]"
-                band="--band-g2"
-                boxWidth={boxWidth}
-            />
+            <div className="tech-sub-grades">
+                <GradeRow grade="大三" names={sub.g3} columns={compact ? 2 : embedded ? 5 : group.subs.length === 1 ? 4 : 3} />
+                <GradeRow grade="大二" names={sub.g2} columns={compact ? 2 : embedded ? 4 : 3} />
+            </div>
         </div>
     );
 }
 
-function TechCard({ group }: { group: TechGroup }) {
+function TechCard({ group, index }: { group: TechGroup; index: number }) {
     const { g3, g2 } = countGroup(group);
-    const boxWidth = chipsBoxWidth(group.width);
-
+    const compact = index === 3;
     return (
-        <section
-            data-card
-            className="relative flex min-w-0 flex-col overflow-hidden rounded-card border bg-[linear-gradient(180deg,var(--color-card-top)_0%,var(--color-card-bottom)_100%)] shadow-[0_14px_34px_rgba(0,0,0,.38),inset_0_1px_0_rgba(255,255,255,.06)]"
-            style={{ flex: `0 0 ${group.width}px`, borderColor: group.border }}
-        >
-            <header
-                className="flex h-[58px] items-center justify-between gap-[12px] px-[20px]"
-                style={{ background: group.accent }}
-            >
-                <span className="text-cardtitle font-bold tracking-[4px] text-white [text-shadow:0_1px_2px_rgba(0,0,0,.35)]">
-                    {group.name}
-                </span>
-                <span className="whitespace-nowrap text-label font-bold tracking-[0.5px] text-white opacity-95">
-                    编制 {g3} + {g2}
-                </span>
+        <section data-card className={`tech-card ${compact ? "tech-card-support" : ""}`} style={{ gridArea: areas[index], borderColor: group.border }}>
+            <header className="tech-card-head" style={{ background: group.accent }}>
+                <div className="tech-card-heading">
+                    <span className="tech-card-title">{group.name}</span>
+                    <span className="tech-card-total" data-group-total>{g3 + g2}<span>人</span></span>
+                </div>
+                <div className="tech-card-note">大三 {g3} · 大二 {g2}</div>
             </header>
-
-            <div className="flex min-h-0 flex-1 flex-col px-[18px] pt-[18px] pb-[30px]">
-                {group.subs.map((s, i) => (
-                    <SubBlock
-                        key={s.name}
-                        sub={s}
-                        group={group}
-                        index={i}
-                        boxWidth={boxWidth}
-                    />
-                ))}
+            <div className="tech-card-body" style={compact ? undefined : { gridTemplateRows: `repeat(${group.subs.length}, minmax(0, 1fr))` }}>
+                {group.subs.map(sub => <SubBlock key={sub.name} sub={sub} group={group} compact={compact} embedded={index === 1} />)}
             </div>
         </section>
     );
@@ -159,28 +66,18 @@ export function TechRoster({ data, stats }: { data: TechData; stats: TechStats }
             <PosterHeader
                 title="技术组人员名单"
                 badge="RM2027"
-                subtitle={
-                    <>
-                        ROBOMASTER 2027 赛季
-                        <span className="mx-[9px] text-faint">|</span>
-                        {data.groups.map((g) => g.name).join(" · ")}
-                    </>
-                }
+                subtitle={<>
+                    ROBOMASTER 2027 赛季
+                    <span className="mx-[9px] text-faint">|</span>
+                    {data.groups.map(g => g.name).join(" · ")}
+                </>}
                 slogan="飒沓流星"
-                stats={{
-                    value: String(stats.total),
-                    unit: "人",
-                    note: `大三 ${stats.g3} · 大二 ${stats.g2}（去重）`,
-                }}
+                stats={{ value: String(stats.total), unit: "人", note: `大三 ${stats.g3} · 大二 ${stats.g2}` }}
             />
             <Countdown />
-
-            <main className="relative z-[1] mt-[var(--gap-band)] flex h-[var(--band-h)] items-stretch gap-[var(--gap-card)]">
-                {data.groups.map((g) => (
-                    <TechCard key={g.name} group={g} />
-                ))}
+            <main className="tech-roster" style={{ gridTemplateColumns: data.groups.slice(0, 3).map(group => `${group.width}px`).join(" ") }}>
+                {data.groups.map((group, index) => <TechCard key={group.name} group={group} index={index} />)}
             </main>
-
             <PosterFooter />
         </>
     );

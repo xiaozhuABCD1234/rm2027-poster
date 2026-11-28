@@ -62,13 +62,12 @@ export function useRosterData(): RosterState {
         ]);
         const tech = parseTech(techRaw, "tech.json");
         const cars = parseCars(carsRaw, "cars.json");
-        // 卡片宽度改动后容易忘了同步：四张卡宽度 + 3 个 18px 间隔 = 内容区 1828px
+        // 三列信息板：机械与综合共用第一列，其余两组各占一列。
         const sumWidth =
-          tech.groups.reduce((a, g) => a + g.width, 0) +
-          18 * Math.max(0, tech.groups.length - 1);
-        if (tech.groups.length && sumWidth !== CONTENT_W) {
+          tech.groups.slice(0, 3).reduce((a, g) => a + g.width, 0) + 36;
+        if (tech.groups.length !== 4 || sumWidth !== CONTENT_W || tech.groups[0]?.width !== tech.groups[3]?.width) {
           console.warn(
-            `tech.json: 卡片宽度合计 ${sumWidth}px 与内容区 ${CONTENT_W}px 不符，海报会溢出或留白`,
+            `tech.json: 需四组，前三组宽度合计加间隔应为 ${CONTENT_W}px（当前 ${sumWidth}px），机械与综合须同宽`,
           );
         }
         if (!alive) return;

@@ -54,7 +54,7 @@ export function Chip({ name, strong }: { name: string; strong: boolean }) {
     <span
       data-chip
       className={[
-        "whitespace-nowrap rounded-block border px-[12px] py-[9px] text-body leading-[1.2] tracking-[1px] text-ink",
+        "whitespace-nowrap rounded-block border px-[12px] py-[7px] text-body leading-[1.2] tracking-[1px] text-ink",
         strong ? "border-edge-strong bg-chip-strong" : "border-edge bg-chip",
       ].join(" ")}
     >

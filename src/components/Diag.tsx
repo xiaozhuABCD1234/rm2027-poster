@@ -83,7 +83,7 @@ export function Diag() {
           : "-";
       lines.push(`脊柱 页眉 ${band(header)} 内容 ${band(section)} 页脚 ${band(footer)}`);
 
-      // 技术组：固定行带装得下胶囊吗（改名单稿把行带撑破时会在这里报出来）
+      // 技术组：年级行是否装得下所有胶囊。
       const bandOverflow = [...stage.querySelectorAll<HTMLElement>("[data-gradeline]")].map(
         (el) => {
           const chips = el.querySelector<HTMLElement>("[data-chips]");
@@ -101,7 +101,26 @@ export function Diag() {
         lines.push(`行带溢出: ${over.length ? over.join(" | ") : "OK 无溢出"}`);
       }
 
-      // 技术组：每张卡里「大三 / 大二」行第一枚胶囊的 y（跨卡应对齐）
+      const subOverflow = [...stage.querySelectorAll<HTMLElement>("[data-sub]")].flatMap(sub => {
+        const bounds = sub.getBoundingClientRect();
+        return [...sub.querySelectorAll<HTMLElement>("[data-chip]")].filter(chip => {
+          const r = chip.getBoundingClientRect();
+          return r.right > bounds.right + 0.5 || r.bottom > bounds.bottom + 0.5;
+        }).map(chip => `${sub.dataset.sub}·${chip.textContent}`);
+      });
+      if (cards.length) lines.push(`子组溢出: ${subOverflow.length ? subOverflow.join(" | ") : "OK 无溢出"}`);
+
+      const gradeGaps = [...stage.querySelectorAll<HTMLElement>("[data-sub]")].flatMap(sub => {
+        const seniors = [...sub.querySelectorAll<HTMLElement>('[data-gradeline="大三"] [data-chip]')];
+        const junior = sub.querySelector<HTMLElement>('[data-gradeline="大二"] [data-chip]');
+        if (!seniors.length || !junior) return [];
+        const bottom = Math.max(...seniors.map(name => name.getBoundingClientRect().bottom));
+        const gap = (junior.getBoundingClientRect().top - bottom) / (sb.width / STAGE_W);
+        return [`${sub.dataset.sub} ${gap.toFixed(1)}px${Math.abs(gap - 24) > 0.5 ? " 异常" : ""}`];
+      });
+      if (gradeGaps.length) lines.push(`年级净间距: ${gradeGaps.join(" | ")}`);
+
+      // 技术组：年级行位置（按实际名单高度排列，不要求跨卡同 y）。
       const gradeLines = [...stage.querySelectorAll<HTMLElement>("[data-gradeline]")].map(
         (el) => {
           const chip = el.querySelector<HTMLElement>("[data-chips] > *");
